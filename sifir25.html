@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sifir Ninja - Misi Potong Buah | Kelas Matematik Cikgu Zafirah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #311b92 50%, #4a148c 100%);
+            overflow: hidden;
+        }
+        .font-game {
+            font-family: 'Fredoka One', 'Arial Black', sans-serif;
+        }
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+        .btn-game {
+            transition: all 0.15s ease;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.3), 0 15px 20px rgba(0,0,0,0.3);
+        }
+        .btn-game:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 11px 0 rgba(0,0,0,0.3), 0 18px 22px rgba(0,0,0,0.4);
+        }
+        .btn-game:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 rgba(0,0,0,0.3), 0 8px 10px rgba(0,0,0,0.3);
+        }
+        .pulse-slow {
+            animation: pulse 2s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .float-anim {
+            animation: float 3s infinite ease-in-out;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-12px) rotate(5deg); }
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fbbf24;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between items-center text-white relative select-none">
+
+    <!-- BACKGROUND CANVAS FOR GAMEPLAY -->
+    <canvas id="gameCanvas" class="absolute top-0 left-0 w-full h-full z-0"></canvas>
+
+    <!-- HEADER / HUD -->
+    <header id="hud" class="relative z-10 w-full max-w-5xl px-4 pt-3 flex flex-col gap-2 pointer-events-none hidden">
+        <!-- TOP INFOBAR -->
+        <div class="flex justify-between items-center bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-2xl border-2 border-yellow-400/70 shadow-lg pointer-events-auto">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600/90 px-3 py-1 rounded-xl text-xs sm:text-sm font-black border border-indigo-300">
+                    🏫 <span class="hidden sm:inline">Kelas Matematik</span> Cikgu Zafirah
+                </div>
+                <div class="text-yellow-300 font-game text-sm sm:text-base tracking-wider" id="hudQuestionTracker">
+                    SOALAN 1/20
+                </div>
+            </div>
+
+            <!-- SCORE & CONTROLS -->
+            <div class="flex items-center gap-3 sm:gap-5">
+                <div class="flex items-center gap-1.5 bg-amber-500/30 px-3 py-1 rounded-xl border border-amber-400/60">
+                    <span class="text-lg">⭐</span>
+                    <span id="hudScore" class="font-game text-yellow-300 text-lg sm:text-2xl font-black">0</span>
+                </div>
+                <button id="btnSoundHUD" class="bg-purple-600 hover:bg-purple-500 p-2 rounded-xl text-lg border border-purple-300 pointer-events-auto">
+                    🔊
+                </button>
+                <button id="btnPauseHUD" class="bg-amber-600 hover:bg-amber-500 p-2 rounded-xl text-lg border border-amber-300 pointer-events-auto">
+                    ⏸️
+                </button>
+            </div>
+        </div>
+
+        <!-- QUESTION BANNER & TIMER -->
+        <div class="flex flex-col items-center">
+            <div class="bg-gradient-to-r from-red-600 via-pink-600 to-purple-600 border-4 border-yellow-300 rounded-3xl px-8 py-2.5 sm:py-3.5 shadow-2xl text-center min-w-[280px] sm:min-w-[420px] pointer-events-auto transform transition-transform hover:scale-105">
+                <div id="hudMathQuestion" class="font-game text-3xl sm:text-5xl font-black text-yellow-300 tracking-wider drop-shadow-[0_4px_6px_rgba(0,0,0,0.9)]">
+                    2 × 4 = ?
+                </div>
+            </div>
+
+            <!-- TIMER BAR & DISPLAY -->
+            <div class="w-full max-w-md bg-slate-900/90 rounded-full h-5 mt-2 border-2 border-slate-600 overflow-hidden shadow-inner relative flex items-center justify-center">
+                <div id="timerBar" class="absolute left-0 top-0 bg-gradient-to-r from-emerald-400 via-yellow-400 to-red-500 h-full w-full transition-all duration-200"></div>
+                <span id="timerText" class="relative z-10 font-game text-xs sm:text-sm font-black text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)] tracking-wider">⏱️ 5s</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- START SCREEN -->
+    <div id="startScreen" class="absolute inset-0 z-20 flex justify-center items-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+        <div class="max-w-2xl w-full my-auto max-h-[95vh] overflow-y-auto bg-gradient-to-b from-indigo-900/95 to-purple-950/95 border-4 border-yellow-400 rounded-3xl p-4 sm:p-6 text-center shadow-2xl flex flex-col items-center relative">
+            
+            <!-- BADGE -->
+            <div class="bg-yellow-400 text-slate-950 font-black px-4 py-1 rounded-full text-xs font-game tracking-wider uppercase mb-1 shadow-md">
+                🏫 Kelas Matematik Cikgu Zafirah
+            </div>
+
+            <!-- LOGO / TITLE -->
+            <div class="float-anim my-1">
+                <h1 class="font-game text-3xl sm:text-5xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
+                    🍉 SIFIR NINJA ⚔️
+                </h1>
+                <p class="font-game text-yellow-200 text-sm sm:text-xl mt-0.5 tracking-wide">
+                    MISI POTONG BUAH MATEMATIK
+                </p>
+            </div>
+
+            <!-- NINJA AVATAR -->
+            <div class="text-3xl sm:text-4xl my-1 pulse-slow">🥷🍉</div>
+
+            <!-- MAKLUMAT NAMA & KELAS -->
+            <div class="w-full max-w-lg bg-indigo-900/80 border border-yellow-400/40 rounded-2xl p-2.5 my-1.5 text-left">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-xs font-bold text-yellow-300 mb-1">👤 NAMA MURID:</label>
+                        <input type="text" id="inputName" placeholder="Contoh: Noor Zafirah" class="w-full bg-slate-950/80 border border-indigo-400/60 rounded-xl px-3 py-1.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-yellow-400 font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-yellow-300 mb-1">🏫 KELAS:</label>
+                        <input type="text" id="inputClass" placeholder="Contoh: 2 Bestari" class="w-full bg-slate-950/80 border border-indigo-400/60 rounded-xl px-3 py-1.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-yellow-400 font-bold">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TIMER SELECTION -->
+            <div class="w-full max-w-lg bg-indigo-900/70 border border-yellow-400/30 rounded-2xl p-2.5 my-1.5 text-center">
+                <label class="font-game text-yellow-300 text-xs sm:text-sm block mb-1.5">⏱️ PILIH MASA MENJAWAB SETIAP SOALAN:</label>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button type="button" data-time="3" class="btn-time-opt bg-indigo-950 hover:bg-purple-700 border-2 border-indigo-400/50 px-2 py-1.5 rounded-xl text-xs font-bold text-white flex flex-col items-center">
+                        <span class="text-xs sm:text-sm">⚡ 3 Saat</span>
+                        <span class="text-[9px] sm:text-[10px] text-yellow-300">Kilat</span>
+                    </button>
+                    <button type="button" data-time="5" class="btn-time-opt bg-purple-600 border-2 border-yellow-300 px-2 py-1.5 rounded-xl text-xs font-bold text-white flex flex-col items-center shadow-lg transform scale-105">
+                        <span class="text-xs sm:text-sm">⏱️ 5 Saat</span>
+                        <span class="text-[9px] sm:text-[10px] text-yellow-200">Standard</span>
+                    </button>
+                    <button type="button" data-time="7" class="btn-time-opt bg-indigo-950 hover:bg-purple-700 border-2 border-indigo-400/50 px-2 py-1.5 rounded-xl text-xs font-bold text-white flex flex-col items-center">
+                        <span class="text-xs sm:text-sm">☕ 7 Saat</span>
+                        <span class="text-[9px] sm:text-[10px] text-indigo-200">Sederhana</span>
+                    </button>
+                    <button type="button" data-time="10" class="btn-time-opt bg-indigo-950 hover:bg-purple-700 border-2 border-indigo-400/50 px-2 py-1.5 rounded-xl text-xs font-bold text-white flex flex-col items-center">
+                        <span class="text-xs sm:text-sm">🐢 10 Saat</span>
+                        <span class="text-[9px] sm:text-[10px] text-indigo-200">Santai</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- CONTROLS & START BUTTON -->
+            <div class="flex flex-col sm:flex-row gap-3 items-center my-3 w-full justify-center">
+                <button id="btnSoundStart" class="bg-purple-700 hover:bg-purple-600 border-2 border-purple-400 px-3 py-2 rounded-xl font-bold flex items-center gap-2 text-xs sm:text-sm">
+                    🔊 <span id="soundText">Muzik: ON</span>
+                </button>
+                <button id="btnStartGame" class="btn-game bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 border-4 border-yellow-300 text-slate-950 font-game text-xl sm:text-2xl px-8 py-3 rounded-2xl tracking-wider uppercase pulse-slow">
+                    🚀 MULA BERMAIN!
+                </button>
+            </div>
+
+            <!-- INSTRUCTIONS -->
+            <div class="bg-indigo-950/80 border border-indigo-500/50 rounded-2xl p-2.5 my-1 text-xs text-indigo-100 max-w-lg leading-relaxed shadow-inner">
+                <p class="font-bold text-yellow-300 mb-0.5">ARAHAN PERMAINAN:</p>
+                <p>Potong buah yang mempunyai <b>jawapan sifir yang betul</b>. Habiskan 20 soalan dan kumpulkan markah tertinggi!</p>
+                <div class="mt-1.5 text-yellow-400 text-[11px] sm:text-xs flex justify-center gap-3">
+                    <span>🎯 20 Soalan</span>
+                    <span>♾️ Tanpa Had Nyawa</span>
+                    <span>⚡ Sifir 2, 3, 4, 5</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULT SCREEN -->
+    <div id="resultScreen" class="absolute inset-0 z-30 flex justify-center items-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-lg overflow-y-auto hidden">
+        <div class="max-w-2xl w-full my-auto max-h-[95vh] overflow-y-auto bg-gradient-to-b from-indigo-900 to-slate-900 border-4 border-yellow-400 rounded-3xl p-4 sm:p-6 text-center shadow-2xl relative flex flex-col items-center">
+            
+            <div class="text-xs sm:text-sm font-bold text-yellow-400 bg-indigo-950/80 px-4 py-1 rounded-full border border-yellow-400/40 mb-2">
+                🏫 Kelas Matematik Cikgu Zafirah
+            </div>
+
+            <h2 class="font-game text-3xl sm:text-5xl text-yellow-300 drop-shadow-md mb-1" id="resultTitle">
+                KEPUTUSAN PERMAINAN
+            </h2>
+
+            <!-- MAKLUMAT MURID -->
+            <div class="bg-indigo-950/90 border border-yellow-400/50 px-4 py-2 rounded-xl my-1 text-center font-bold text-xs sm:text-sm text-yellow-200">
+                👤 NAMA: <span id="resStudentName" class="text-white uppercase font-game">NOOR ZAFIRAH</span> &nbsp;|&nbsp; 🏫 KELAS: <span id="resStudentClass" class="text-white uppercase font-game">2 BESTARI</span>
+            </div>
+
+            <!-- TITLE BADGE -->
+            <div id="resultBadge" class="font-game text-xl sm:text-3xl text-emerald-300 bg-emerald-950/80 border-2 border-emerald-400 px-6 py-2 rounded-2xl my-3 shadow-lg">
+                🥷 MASTER NINJA SIFIR!
+            </div>
+
+            <!-- STATS GRID -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full my-4">
+                <div class="bg-indigo-950/70 p-3 rounded-2xl border border-indigo-500/30">
+                    <div class="text-xs text-indigo-300 font-bold">JUMLAH SKOR</div>
+                    <div id="resScore" class="font-game text-2xl text-yellow-400">0</div>
+                </div>
+                <div class="bg-indigo-950/70 p-3 rounded-2xl border border-indigo-500/30">
+                    <div class="text-xs text-indigo-300 font-bold">BETUL</div>
+                    <div id="resCorrect" class="font-game text-2xl text-emerald-400">0/20</div>
+                </div>
+                <div class="bg-indigo-950/70 p-3 rounded-2xl border border-indigo-500/30">
+                    <div class="text-xs text-indigo-300 font-bold">SALAH / MASA</div>
+                    <div id="resWrong" class="font-game text-2xl text-rose-400">0</div>
+                </div>
+                <div class="bg-indigo-950/70 p-3 rounded-2xl border border-indigo-500/30">
+                    <div class="text-xs text-indigo-300 font-bold">KETEPATAN</div>
+                    <div id="resAccuracy" class="font-game text-2xl text-cyan-300">0%</div>
+                </div>
+            </div>
+
+            <!-- KOTAK PUJIAN & PESANAN CIKGU ZAFIRAH -->
+            <div id="resultPraise" class="w-full max-w-xl bg-indigo-950/90 border-2 border-yellow-400/60 rounded-2xl p-4 my-2 text-center shadow-lg text-sm sm:text-base leading-relaxed">
+            </div>
+
+            <!-- BUTTONS -->
+            <div class="flex flex-col sm:flex-row gap-4 mt-2 w-full justify-center">
+                <button id="btnReview" class="btn-game bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border-2 border-purple-300 text-white font-game text-xl px-6 py-3 rounded-2xl uppercase">
+                    📖 SEMAK JAWAPAN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- REVIEW MODAL -->
+    <div id="reviewModal" class="absolute inset-0 z-40 flex justify-center items-center p-4 bg-slate-950/90 backdrop-blur-md hidden">
+        <div class="max-w-3xl w-full h-[85vh] bg-slate-900 border-4 border-purple-400 rounded-3xl p-4 sm:p-6 flex flex-col justify-between shadow-2xl">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-700">
+                <div>
+                    <h3 class="font-game text-2xl text-yellow-300">📖 SEMAKAN JAWAPAN</h3>
+                    <p class="text-xs text-purple-300">
+                        Kelas Matematik Cikgu Zafirah &bull; <span id="reviewStudentInfo" class="font-bold text-yellow-200"></span>
+                    </p>
+                </div>
+                <button id="btnCloseReview" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-2 rounded-xl border border-rose-300">
+                    ✖️ TUTUP
+                </button>
+            </div>
+
+            <!-- REVIEW LIST CONTAINER -->
+            <div id="reviewList" class="flex-1 overflow-y-auto my-3 pr-2 flex flex-col gap-2.5">
+            </div>
+
+            <div class="text-center pt-2 border-t border-slate-700">
+                <button id="btnCloseReviewBottom" class="bg-indigo-600 hover:bg-indigo-500 text-white font-game px-8 py-2.5 rounded-2xl border border-indigo-300">
+                    KEMBALI KE KEPUTUSAN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const audio = {
+            ctx: null,
+            enabled: true,
+            bgmInterval: null,
+            isBGMPlaying: false,
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) {
+                        this.ctx = new AudioCtx();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+
+            toggleSound() {
+                this.enabled = !this.enabled;
+                if (!this.enabled && this.isBGMPlaying) {
+                    this.stopBGM();
+                } else if (this.enabled && !this.isBGMPlaying) {
+                    this.startBGM();
+                }
+                return this.enabled;
+            },
+
+            playSlash() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    const bufferSize = this.ctx.sampleRate * 0.08;
+                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+
+                    const noise = this.ctx.createBufferSource();
+                    noise.buffer = buffer;
+
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
+                    filter.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.08);
+
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    noise.start();
+                } catch (e) {}
+            },
+
+            playCorrect() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.08);
+                    osc.frequency.setValueAtTime(783.99, now + 0.16);
+
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } catch (e) {}
+            },
+
+            playWrong() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.25);
+
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } catch (e) {}
+            },
+
+            playCombo() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    const now = this.ctx.currentTime;
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+                        gain.gain.setValueAtTime(0.2, now + idx * 0.06);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.2);
+
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+
+                        osc.start(now + idx * 0.06);
+                        osc.stop(now + idx * 0.06 + 0.2);
+                    });
+                } catch (e) {}
+            },
+
+            playVictory() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                try {
+                    const now = this.ctx.currentTime;
+                    const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+                    notes.forEach((freq, idx) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+
+                        gain.gain.setValueAtTime(0.25, now + idx * 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.4);
+
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+
+                        osc.start(now + idx * 0.1);
+                        osc.stop(now + idx * 0.1 + 0.4);
+                    });
+                } catch (e) {}
+            },
+
+            startBGM() {
+                if (!this.enabled || this.isBGMPlaying) return;
+                this.init();
+                if (!this.ctx) return;
+
+                this.isBGMPlaying = true;
+                let noteIndex = 0;
+
+                const melody = [
+                    440, 440, 440, 440, 659.25, 587.33, 523.25, 440,
+                    523.25, 440, 392, 440, 659.25, 587.33, 523.25, 659.25,
+                    698.46, 698.46, 698.46, 698.46, 659.25, 587.33, 523.25, 440,
+                    523.25, 587.33, 659.25, 587.33, 523.25, 440, 392, 440
+                ];
+                const bass = [220, 220, 174.61, 174.61, 261.63, 261.63, 196, 196];
+
+                this.bgmInterval = setInterval(() => {
+                    if (!this.enabled || !this.isBGMPlaying || !this.ctx) return;
+                    try {
+                        const now = this.ctx.currentTime;
+                        
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(melody[noteIndex], now);
+                        gain.gain.setValueAtTime(0.05, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.13);
+
+                        if (noteIndex % 2 === 0) {
+                            const bassOsc = this.ctx.createOscillator();
+                            const bassGain = this.ctx.createGain();
+                            bassOsc.type = 'sine';
+                            bassOsc.frequency.setValueAtTime(bass[Math.floor(noteIndex / 4) % bass.length], now);
+                            bassGain.gain.setValueAtTime(0.07, now);
+                            bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+                            bassOsc.connect(bassGain);
+                            bassGain.connect(this.ctx.destination);
+                            bassOsc.start(now);
+                            bassOsc.stop(now + 0.16);
+                        }
+
+                        noteIndex = (noteIndex + 1) % melody.length;
+                    } catch (e) {}
+                }, 150);
+            },
+
+            stopBGM() {
+                this.isBGMPlaying = false;
+                if (this.bgmInterval) {
+                    clearInterval(this.bgmInterval);
+                    this.bgmInterval = null;
+                }
+            }
+        };
+
+        function generate20Questions() {
+            const tables = [2, 3, 4, 5];
+            const rawPool = [];
+
+            tables.forEach(table => {
+                for (let i = 1; i <= 10; i++) {
+                    rawPool.push({ a: table, b: i, ans: table * i });
+                }
+            });
+
+            const shuffled = rawPool.sort(() => Math.random() - 0.5).slice(0, 20);
+
+            return shuffled.map((q, idx) => {
+                const correctAns = q.ans;
+                const distractors = new Set();
+
+                while (distractors.size < 2) {
+                    let offset = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                    let wrong = correctAns + offset;
+                    if (wrong > 0 && wrong !== correctAns) {
+                        distractors.add(wrong);
+                    }
+                }
+
+                const options = [correctAns, ...Array.from(distractors)].sort(() => Math.random() - 0.5);
+
+                return {
+                    id: idx + 1,
+                    num1: q.a,
+                    num2: q.b,
+                    questionText: `${q.a} × ${q.b} = ?`,
+                    correctAns: correctAns,
+                    options: options
+                };
+            });
+        }
+
+        const FRUIT_TYPES = [
+            { name: 'Watermelon', emoji: '🍉', color: '#ef4444', juice: '#dc2626' },
+            { name: 'Apple', emoji: '🍎', color: '#f87171', juice: '#e11d48' },
+            { name: 'Orange', emoji: '🍊', color: '#fb923c', juice: '#ea580c' },
+            { name: 'Strawberry', emoji: '🍓', color: '#fb7185', juice: '#e11d48' },
+            { name: 'Pineapple', emoji: '🍍', color: '#facc15', juice: '#ca8a04' },
+            { name: 'Banana', emoji: '🍌', color: '#fef08a', juice: '#eab308' }
+        ];
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let selectedTimeLimit = 5;
+
+        let gameState = {
+            active: false,
+            paused: false,
+            questions: [],
+            currentIndex: 0,
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            correctCount: 0,
+            wrongCount: 0,
+            unansweredCount: 0,
+            timeLimit: 5,
+            timer: 5,
+            timerInterval: null,
+            userAnswers: [],
+            currentFruits: [],
+            particles: [],
+            splatters: [],
+            sliceTrail: [],
+            floatingTexts: []
+        };
+
+        class Fruit {
+            constructor(x, y, vx, vy, value, isCorrect, fruitType) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.gravity = 0.16;
+                this.radius = Math.min(width, height) * 0.065 + 18;
+                this.value = value;
+                this.isCorrect = isCorrect;
+                this.type = fruitType;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.vRot = (Math.random() - 0.5) * 0.04;
+                this.sliced = false;
+                this.sliceAngle = 0;
+                this.halfOffset = 0;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.rotation += this.vRot;
+
+                if (this.sliced) {
+                    this.halfOffset += 5;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                if (!this.sliced) {
+                    ctx.rotate(this.rotation);
+                    
+                    // Outer Fruit Circle
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = this.type.color;
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 14;
+                    ctx.shadowOffsetY = 6;
+                    ctx.fill();
+
+                    // Inner White Flesh Ring
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius * 0.82, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+
+                    // Fruit Emoji Corner Icon
+                    ctx.shadowBlur = 0;
+                    ctx.font = `${this.radius * 0.45}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.type.emoji, this.radius * 0.4, -this.radius * 0.4);
+
+                    // HIGH-CONTRAST WHITE BADGE FOR NUMBER
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius * 0.55, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                    ctx.shadowBlur = 8;
+                    ctx.fill();
+                    
+                    // Golden Border around Badge
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius * 0.55, 0, Math.PI * 2);
+                    ctx.lineWidth = 3.5;
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.stroke();
+
+                    // ULTRA-BOLD CRYSTAL-CLEAR NUMBER TEXT
+                    ctx.shadowBlur = 0;
+                    const fontSize = Math.round(this.radius * 0.7);
+                    ctx.font = `900 ${fontSize}px 'Fredoka One', 'Arial Black', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    // Thick White Stroke Outline
+                    ctx.lineWidth = 6;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.strokeText(this.value, 0, 2);
+
+                    // Deep Navy Dark Text for Highest Contrast
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillText(this.value, 0, 2);
+
+                } else {
+                    ctx.rotate(this.sliceAngle);
+
+                    ctx.save();
+                    ctx.translate(-this.halfOffset, 0);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, Math.PI * 0.5, Math.PI * 1.5);
+                    ctx.closePath();
+                    ctx.fillStyle = this.type.color;
+                    ctx.fill();
+                    ctx.font = `${this.radius * 0.7}px sans-serif`;
+                    ctx.fillText(this.type.emoji, -10, -10);
+                    ctx.restore();
+
+                    ctx.save();
+                    ctx.translate(this.halfOffset, 0);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, Math.PI * 1.5, Math.PI * 0.5);
+                    ctx.closePath();
+                    ctx.fillStyle = this.type.color;
+                    ctx.fill();
+                    ctx.font = `${this.radius * 0.7}px sans-serif`;
+                    ctx.fillText(this.type.emoji, 10, 10);
+                    ctx.restore();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.radius = Math.random() * 6 + 3;
+                this.vx = (Math.random() - 0.5) * 12;
+                this.vy = (Math.random() - 0.5) * 12;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.03 + 0.015;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.decay;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class JuiceSplatter {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.alpha = 0.8;
+                this.radius = Math.random() * 25 + 15;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class FloatingText {
+            constructor(x, y, text, color) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.color = color;
+                this.alpha = 1;
+                this.vy = -2;
+            }
+
+            update() {
+                this.y += this.vy;
+                this.alpha -= 0.02;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.font = "900 32px 'Fredoka One', 'Arial Black', sans-serif";
+                ctx.fillStyle = this.color;
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 5;
+                ctx.textAlign = 'center';
+                ctx.strokeText(this.text, this.x, this.y);
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
+        let isMouseDown = false;
+        let mouseTrail = [];
+
+        function handlePointerDown(e) {
+            isMouseDown = true;
+            audio.init();
+            audio.startBGM();
+            const pos = getPointerPos(e);
+            mouseTrail = [pos];
+        }
+
+        function handlePointerMove(e) {
+            if (!isMouseDown && e.type !== 'touchmove') return;
+            const pos = getPointerPos(e);
+            mouseTrail.push(pos);
+            if (mouseTrail.length > 8) mouseTrail.shift();
+
+            if (gameState.active && !gameState.paused) {
+                checkBladeSlice();
+            }
+        }
+
+        function handlePointerUp() {
+            isMouseDown = false;
+            mouseTrail = [];
+        }
+
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('mousedown', handlePointerDown);
+        canvas.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointerDown(e); }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handlePointerMove(e); }, { passive: false });
+        canvas.addEventListener('touchend', handlePointerUp);
+
+        function checkBladeSlice() {
+            if (mouseTrail.length < 2) return;
+
+            const p1 = mouseTrail[mouseTrail.length - 2];
+            const p2 = mouseTrail[mouseTrail.length - 1];
+
+            gameState.currentFruits.forEach(fruit => {
+                if (!fruit.sliced) {
+                    if (lineIntersectsCircle(p1, p2, { x: fruit.x, y: fruit.y, r: fruit.radius })) {
+                        sliceFruit(fruit, p1, p2);
+                    }
+                }
+            });
+        }
+
+        function lineIntersectsCircle(p1, p2, c) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const len = Math.hypot(dx, dy);
+            if (len === 0) return false;
+
+            const u = ((c.x - p1.x) * dx + (c.y - p1.y) * dy) / (len * len);
+            const clampedU = Math.max(0, Math.min(1, u));
+
+            const nearestX = p1.x + clampedU * dx;
+            const nearestY = p1.y + clampedU * dy;
+
+            const dist = Math.hypot(c.x - nearestX, c.y - nearestY);
+            return dist < c.r;
+        }
+
+        function sliceFruit(fruit, p1, p2) {
+            fruit.sliced = true;
+            fruit.sliceAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+            audio.playSlash();
+
+            for (let i = 0; i < 15; i++) {
+                gameState.particles.push(new Particle(fruit.x, fruit.y, fruit.type.juice));
+            }
+            gameState.splatters.push(new JuiceSplatter(fruit.x, fruit.y, fruit.type.juice));
+
+            const q = gameState.questions[gameState.currentIndex];
+
+            if (fruit.isCorrect) {
+                audio.playCorrect();
+                gameState.score += 10;
+                gameState.combo++;
+                if (gameState.combo > gameState.maxCombo) gameState.maxCombo = gameState.combo;
+                gameState.correctCount++;
+
+                let comboMsg = "HEBAT! JAWAPAN BETUL! +10";
+                if (gameState.combo === 2) { comboMsg = "KOMBO x2! 🔥"; audio.playCombo(); }
+                else if (gameState.combo === 3) { comboMsg = "NINJA HEBAT x3! ⚡"; audio.playCombo(); }
+                else if (gameState.combo >= 5) { comboMsg = "MASTER NINJA! 🌟"; audio.playCombo(); }
+
+                gameState.floatingTexts.push(new FloatingText(fruit.x, fruit.y - 30, comboMsg, '#4ade80'));
+
+                gameState.userAnswers.push({
+                    q: q.questionText,
+                    selected: fruit.value,
+                    correct: q.correctAns,
+                    status: 'correct'
+                });
+
+            } else {
+                audio.playWrong();
+                gameState.combo = 0;
+                gameState.wrongCount++;
+
+                gameState.floatingTexts.push(new FloatingText(fruit.x, fruit.y - 30, `Oops! Jawapan ialah ${q.correctAns}`, '#f87171'));
+
+                gameState.userAnswers.push({
+                    q: q.questionText,
+                    selected: fruit.value,
+                    correct: q.correctAns,
+                    status: 'wrong'
+                });
+            }
+
+            updateHUD();
+            clearInterval(gameState.timerInterval);
+
+            setTimeout(() => {
+                nextQuestion();
+            }, 1200);
+        }
+
+        function launchFruitsForQuestion() {
+            gameState.currentFruits = [];
+            const q = gameState.questions[gameState.currentIndex];
+
+            const availableTypes = [...FRUIT_TYPES].sort(() => Math.random() - 0.5);
+
+            const count = q.options.length;
+            const spacing = width / (count + 1);
+
+            q.options.forEach((optValue, i) => {
+                const isCorrect = (optValue === q.correctAns);
+                const fruitType = availableTypes[i % availableTypes.length];
+
+                const startX = spacing * (i + 1) + (Math.random() - 0.5) * 40;
+                const startY = height + 40;
+
+                const vx = (width / 2 - startX) * 0.005 + (Math.random() - 0.5) * 1.5;
+                const vy = -(height * 0.012 + Math.random() * 1.5 + 2.5);
+
+                gameState.currentFruits.push(new Fruit(startX, startY, vx, vy, optValue, isCorrect, fruitType));
+            });
+
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(gameState.timerInterval);
+            const timerBar = document.getElementById('timerBar');
+            const timerText = document.getElementById('timerText');
+
+            gameState.timer = gameState.timeLimit;
+            timerBar.style.width = '100%';
+            timerBar.className = "absolute left-0 top-0 bg-gradient-to-r from-emerald-400 via-yellow-400 to-red-500 h-full transition-all duration-200";
+            timerText.innerText = `⏱️ ${Math.ceil(gameState.timer)}s`;
+
+            gameState.timerInterval = setInterval(() => {
+                if (gameState.paused) return;
+
+                gameState.timer -= 0.1;
+                const pct = Math.max(0, (gameState.timer / gameState.timeLimit) * 100);
+                timerBar.style.width = `${pct}%`;
+
+                if (gameState.timer <= 2) {
+                    timerBar.className = "absolute left-0 top-0 bg-rose-600 h-full transition-all duration-200 pulse-slow";
+                }
+
+                timerText.innerText = `⏱️ ${Math.max(0, Math.ceil(gameState.timer))}s`;
+
+                if (gameState.timer <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    handleTimeOut();
+                }
+            }, 100);
+        }
+
+        function handleTimeOut() {
+            audio.playWrong();
+            gameState.unansweredCount++;
+            gameState.combo = 0;
+
+            const q = gameState.questions[gameState.currentIndex];
+            gameState.floatingTexts.push(new FloatingText(width / 2, height / 2, `Masa Tamat! Jawapan ialah ${q.correctAns}`, '#f87171'));
+
+            gameState.userAnswers.push({
+                q: q.questionText,
+                selected: 'Tiada Jawapan (Masa Tamat)',
+                correct: q.correctAns,
+                status: 'timeout'
+            });
+
+            updateHUD();
+
+            setTimeout(() => {
+                nextQuestion();
+            }, 1500);
+        }
+
+        function nextQuestion() {
+            gameState.currentIndex++;
+
+            if (gameState.currentIndex >= 20) {
+                endGame();
+            } else {
+                updateHUD();
+                launchFruitsForQuestion();
+            }
+        }
+
+        function updateHUD() {
+            const q = gameState.questions[gameState.currentIndex];
+            if (!q) return;
+
+            document.getElementById('hudQuestionTracker').innerText = `SOALAN ${gameState.currentIndex + 1}/20`;
+            document.getElementById('hudScore').innerText = gameState.score;
+            document.getElementById('hudMathQuestion').innerText = q.questionText;
+        }
+
+        function startGame() {
+            audio.init();
+            audio.startBGM();
+
+            const nameInput = document.getElementById('inputName').value.trim();
+            const classInput = document.getElementById('inputClass').value.trim();
+
+            gameState = {
+                active: true,
+                paused: false,
+                playerName: nameInput || 'Noor Zafirah',
+                playerClass: classInput || '2 Bestari',
+                questions: generate20Questions(),
+                currentIndex: 0,
+                score: 0,
+                combo: 0,
+                maxCombo: 0,
+                correctCount: 0,
+                wrongCount: 0,
+                unansweredCount: 0,
+                timeLimit: selectedTimeLimit,
+                timer: selectedTimeLimit,
+                timerInterval: null,
+                userAnswers: [],
+                currentFruits: [],
+                particles: [],
+                splatters: [],
+                sliceTrail: [],
+                floatingTexts: []
+            };
+
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('reviewModal').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+
+            updateHUD();
+            launchFruitsForQuestion();
+        }
+
+        function endGame() {
+            gameState.active = false;
+            clearInterval(gameState.timerInterval);
+
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+
+            document.getElementById('resStudentName').innerText = gameState.playerName;
+            document.getElementById('resStudentClass').innerText = gameState.playerClass;
+
+            const totalAnswered = gameState.correctCount + gameState.wrongCount + gameState.unansweredCount;
+            const accuracy = totalAnswered > 0 ? Math.round((gameState.correctCount / 20) * 100) : 0;
+
+            document.getElementById('resScore').innerText = gameState.score;
+            document.getElementById('resCorrect').innerText = `${gameState.correctCount}/20`;
+            document.getElementById('resWrong').innerText = `${gameState.wrongCount + gameState.unansweredCount}`;
+            document.getElementById('resAccuracy').innerText = `${accuracy}%`;
+
+            const badge = document.getElementById('resultBadge');
+            const praiseBox = document.getElementById('resultPraise');
+
+            if (accuracy >= 90) {
+                badge.innerText = "🥷 MASTER NINJA SIFIR!";
+                badge.className = "font-game text-xl sm:text-3xl text-emerald-300 bg-emerald-950/80 border-2 border-emerald-400 px-6 py-2 rounded-2xl my-3 shadow-lg";
+                praiseBox.innerHTML = `
+                    <p class="font-game text-yellow-300 text-lg sm:text-xl mb-1">🌟 TAHNIAH! SKOR PADU! 🌟</p>
+                    <div class="bg-amber-400/20 p-2.5 rounded-xl border border-amber-400/50 text-sm font-bold text-yellow-200">
+                        📖 <b>Pesanan Cikgu Zafirah:</b> Jangan lupa hafal sifir! ⚡🔥
+                    </div>
+                `;
+                audio.playVictory();
+            } else if (accuracy >= 70) {
+                badge.innerText = "🏆 NINJA HEBAT!";
+                badge.className = "font-game text-xl sm:text-3xl text-yellow-300 bg-yellow-950/80 border-2 border-yellow-400 px-6 py-2 rounded-2xl my-3 shadow-lg";
+                praiseBox.innerHTML = `
+                    <p class="font-game text-yellow-300 text-lg sm:text-xl mb-1">👏 BAGUS & HEBAT! 👏</p>
+                    <div class="bg-amber-400/20 p-2.5 rounded-xl border border-amber-400/50 text-sm font-bold text-yellow-200">
+                        📖 <b>Pesanan Cikgu Zafirah:</b> Jangan lupa hafal sifir! 💪✨
+                    </div>
+                `;
+            } else if (accuracy >= 50) {
+                badge.innerText = "🍉 NINJA BERLATIH!";
+                badge.className = "font-game text-xl sm:text-3xl text-orange-300 bg-orange-950/80 border-2 border-orange-400 px-6 py-2 rounded-2xl my-3 shadow-lg";
+                praiseBox.innerHTML = `
+                    <p class="font-game text-yellow-300 text-lg sm:text-xl mb-1">👍 CUBAAN YANG BAGUS! 👍</p>
+                    <div class="bg-amber-400/20 p-2.5 rounded-xl border border-amber-400/50 text-sm font-bold text-yellow-200">
+                        📖 <b>Pesanan Cikgu Zafirah:</b> Jangan lupa hafal sifir! 🚀
+                    </div>
+                `;
+            } else {
+                badge.innerText = "💪 TERUS BERLATIH!";
+                badge.className = "font-game text-xl sm:text-3xl text-rose-300 bg-rose-950/80 border-2 border-rose-400 px-6 py-2 rounded-2xl my-3 shadow-lg";
+                praiseBox.innerHTML = `
+                    <p class="font-game text-yellow-300 text-lg sm:text-xl mb-1">❤️ JANGAN MENGALAH! ❤️</p>
+                    <div class="bg-amber-400/20 p-2.5 rounded-xl border border-amber-400/50 text-sm font-bold text-yellow-200">
+                        📖 <b>Pesanan Cikgu Zafirah:</b> Jangan lupa hafal sifir! 💪🔥
+                    </div>
+                `;
+            }
+        }
+
+        function renderAnswerReview() {
+            const listContainer = document.getElementById('reviewList');
+            listContainer.innerHTML = '';
+
+            document.getElementById('reviewStudentInfo').innerText = `${gameState.playerName} (${gameState.playerClass})`;
+
+            gameState.userAnswers.forEach((ans, i) => {
+                const item = document.createElement('div');
+                const isCorrect = ans.status === 'correct';
+                const isTimeout = ans.status === 'timeout';
+
+                item.className = `p-3 rounded-2xl border flex justify-between items-center ${
+                    isCorrect 
+                        ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200' 
+                        : 'bg-rose-950/40 border-rose-500/50 text-rose-200'
+                }`;
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="font-game text-lg w-8 h-8 rounded-full flex items-center justify-center ${isCorrect ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}">
+                            ${i + 1}
+                        </span>
+                        <div>
+                            <div class="font-bold text-white text-base">${ans.q}</div>
+                            <div class="text-xs opacity-90">
+                                Jawapan Anda: <span class="font-bold">${ans.selected}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-yellow-300 font-bold">Betul: ${ans.correct}</div>
+                        <div class="text-xs font-bold uppercase ${isCorrect ? 'text-emerald-400' : isTimeout ? 'text-amber-400' : 'text-rose-400'}">
+                            ${isCorrect ? '✓ BETUL' : isTimeout ? '⏱️ MASA TAMAT' : '✗ SALAH'}
+                        </div>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+
+            document.getElementById('reviewModal').classList.remove('hidden');
+        }
+
+        const timeButtons = document.querySelectorAll('.btn-time-opt');
+        timeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                timeButtons.forEach(b => {
+                    b.className = 'btn-time-opt bg-indigo-950 hover:bg-purple-700 border-2 border-indigo-400/50 px-2 py-2 rounded-xl text-xs font-bold text-white flex flex-col items-center';
+                });
+                btn.className = 'btn-time-opt bg-purple-600 border-2 border-yellow-300 px-2 py-2 rounded-xl text-xs font-bold text-white flex flex-col items-center shadow-lg transform scale-105';
+                selectedTimeLimit = parseInt(btn.getAttribute('data-time'), 10);
+            });
+        });
+
+        document.getElementById('btnStartGame').addEventListener('click', startGame);
+        document.getElementById('btnReview').addEventListener('click', renderAnswerReview);
+        document.getElementById('btnCloseReview').addEventListener('click', () => {
+            document.getElementById('reviewModal').classList.add('hidden');
+        });
+        document.getElementById('btnCloseReviewBottom').addEventListener('click', () => {
+            document.getElementById('reviewModal').classList.add('hidden');
+        });
+
+        const soundBtnStart = document.getElementById('btnSoundStart');
+        const soundBtnHUD = document.getElementById('btnSoundHUD');
+
+        function toggleSoundUI() {
+            const enabled = audio.toggleSound();
+            const txt = enabled ? "Muzik: ON" : "Muzik: OFF";
+            const icon = enabled ? "🔊" : "🔇";
+            document.getElementById('soundText').innerText = txt;
+            soundBtnHUD.innerText = icon;
+        }
+
+        soundBtnStart.addEventListener('click', toggleSoundUI);
+        soundBtnHUD.addEventListener('click', toggleSoundUI);
+
+        document.getElementById('btnPauseHUD').addEventListener('click', () => {
+            gameState.paused = !gameState.paused;
+            document.getElementById('btnPauseHUD').innerText = gameState.paused ? "▶️" : "⏸️";
+        });
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, width, height);
+
+            gameState.splatters.forEach(splatter => splatter.draw(ctx));
+
+            gameState.currentFruits.forEach(fruit => {
+                if (!gameState.paused) fruit.update();
+                fruit.draw(ctx);
+            });
+
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const p = gameState.particles[i];
+                if (!gameState.paused) p.update();
+                p.draw(ctx);
+                if (p.alpha <= 0) gameState.particles.splice(i, 1);
+            }
+
+            for (let i = gameState.floatingTexts.length - 1; i >= 0; i--) {
+                const ft = gameState.floatingTexts[i];
+                if (!gameState.paused) ft.update();
+                ft.draw(ctx);
+                if (ft.alpha <= 0) gameState.floatingTexts.splice(i, 1);
+            }
+
+            if (mouseTrail.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(mouseTrail[0].x, mouseTrail[0].y);
+                for (let i = 1; i < mouseTrail.length; i++) {
+                    ctx.lineTo(mouseTrail[i].x, mouseTrail[i].y);
+                }
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 6;
+                ctx.lineCap = 'round';
+                ctx.shadowColor = '#0284c7';
+                ctx.shadowBlur = 10;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = () => {
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
